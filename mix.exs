@@ -1,4 +1,4 @@
-defmodule XmlStreamWriter.MixProject do
+defmodule XMLStreamWriter.MixProject do
   use Mix.Project
 
   def project do

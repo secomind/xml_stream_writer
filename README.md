@@ -1,4 +1,4 @@
-# XmlStreamWriter
+# XMLStreamWriter
 
 **TODO: Add description**
 
