@@ -60,4 +60,95 @@ defmodule XMLStreamWriterTest do
 
     assert :erlang.iolist_to_binary(doc) == expected
   end
+
+  test "escape > and <" do
+    {:ok, s0, state} = XMLStreamWriter.new_document()
+    {:ok, s1, state} = XMLStreamWriter.start_element(state, "escape", [])
+    {:ok, s2, state} = XMLStreamWriter.characters(state, "> and < must be escaped.")
+    {:ok, s3, _state} = XMLStreamWriter.end_element(state)
+
+    expected = "<escape>&gt; and &lt; must be escaped.</escape>"
+
+    doc = [s0, s1, s2, s3]
+
+    assert :erlang.iolist_to_binary(doc) == expected
+  end
+
+  test ~s(escape " in attributes) do
+    {:ok, s0, state} = XMLStreamWriter.new_document()
+    {:ok, s1, state} = XMLStreamWriter.start_element(state, "escape", attribute: ~s(escape " me))
+    {:ok, s2, state} = XMLStreamWriter.characters(state, ~s(here " is fine.))
+    {:ok, s3, _state} = XMLStreamWriter.end_element(state)
+
+    expected = ~s(<escape attribute='escape " me'>here " is fine.</escape>)
+
+    doc = [s0, s1, s2, s3]
+
+    assert :erlang.iolist_to_binary(doc) == expected
+  end
+
+  test "escape > and < in attributes" do
+    {:ok, s0, state} = XMLStreamWriter.new_document()
+    {:ok, s1, state} = XMLStreamWriter.start_element(state, "escape", attribute: "<test>")
+    {:ok, s2, state} = XMLStreamWriter.characters(state, "Test")
+    {:ok, s3, _state} = XMLStreamWriter.end_element(state)
+
+    expected = ~s(<escape attribute="&lt;test&gt;">Test</escape>)
+
+    doc = [s0, s1, s2, s3]
+
+    assert :erlang.iolist_to_binary(doc) == expected
+  end
+
+  test ~s(everything is escaped when <, >, ", ' are used) do
+    {:ok, s0, state} = XMLStreamWriter.new_document()
+    {:ok, s1, state} = XMLStreamWriter.start_element(state, "escape", attribute: ~s("<'test">'))
+    {:ok, s2, state} = XMLStreamWriter.characters(state, "42")
+    {:ok, s3, _state} = XMLStreamWriter.end_element(state)
+
+    expected = ~s(<escape attribute="&quot;&lt;&apos;test&quot;&gt;&apos;">42</escape>)
+
+    doc = [s0, s1, s2, s3]
+
+    assert :erlang.iolist_to_binary(doc) == expected
+  end
+
+  test ~s(everything is escaped when <, >, ", ', & are used) do
+    {:ok, s0, state} = XMLStreamWriter.new_document()
+    {:ok, s1, state} = XMLStreamWriter.start_element(state, "escape", attribute: ~s("<'te&st">'))
+    {:ok, s2, state} = XMLStreamWriter.characters(state, "42")
+    {:ok, s3, _state} = XMLStreamWriter.end_element(state)
+
+    expected = ~s(<escape attribute="&quot;&lt;&apos;te&amp;st&quot;&gt;&apos;">42</escape>)
+
+    doc = [s0, s1, s2, s3]
+
+    assert :erlang.iolist_to_binary(doc) == expected
+  end
+
+  test ~s(use ' when <, > and " are used, but not ') do
+    {:ok, s0, state} = XMLStreamWriter.new_document()
+    {:ok, s1, state} = XMLStreamWriter.start_element(state, "escape", attribute: ~s("<test>"))
+    {:ok, s2, state} = XMLStreamWriter.characters(state, "42")
+    {:ok, s3, _state} = XMLStreamWriter.end_element(state)
+
+    expected = ~s(<escape attribute='"&lt;test&gt;"'>42</escape>)
+
+    doc = [s0, s1, s2, s3]
+
+    assert :erlang.iolist_to_binary(doc) == expected
+  end
+
+  test ~s(use " when <, >, & and ' are used, but not ") do
+    {:ok, s0, state} = XMLStreamWriter.new_document()
+    {:ok, s1, state} = XMLStreamWriter.start_element(state, "escape", attribute: ~s('<te&st>'))
+    {:ok, s2, state} = XMLStreamWriter.characters(state, "42")
+    {:ok, s3, _state} = XMLStreamWriter.end_element(state)
+
+    expected = ~s(<escape attribute="'&lt;te&amp;st&gt;'">42</escape>)
+
+    doc = [s0, s1, s2, s3]
+
+    assert :erlang.iolist_to_binary(doc) == expected
+  end
 end
