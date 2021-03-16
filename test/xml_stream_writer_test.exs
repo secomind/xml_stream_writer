@@ -170,22 +170,65 @@ defmodule XMLStreamWriterTest do
     assert :erlang.iolist_to_binary(doc) == expected
   end
 
-  test "XML empty comment" do
+  test "comment" do
     {:ok, s1, state} = XMLStreamWriter.new_document()
     {:ok, s2, state} = XMLStreamWriter.start_comment(state)
-    {:ok, s3, state} = XMLStreamWriter.characters(state, "")
+    {:ok, s3, state} = XMLStreamWriter.no_markup_characters(state, ~s( a comment! <, >, ", ', & ))
     {:ok, s4, _state} = XMLStreamWriter.end_comment(state)
 
-    expected = ~s(<!---->)
+    expected = ~s(<!-- a comment! <, >, ", ', & -->)
     assert :erlang.iolist_to_binary([s1, s2, s3, s4]) == expected
   end
 
-  test "xml with nested tags, attributes and comments" do
+  test "comment fail when characters are escaped" do
+    {:ok, s1, state} = XMLStreamWriter.new_document()
+    {:ok, s2, state} = XMLStreamWriter.start_comment(state)
+    {:ok, s3, state} = XMLStreamWriter.characters(state, ~s( a comment! <, >, ", ', & ))
+    {:ok, s4, _state} = XMLStreamWriter.end_comment(state)
+
+    expected = ~s(<!-- a comment! <, >, ", ', & -->)
+    refute :erlang.iolist_to_binary([s1, s2, s3, s4]) == expected
+  end
+
+  test "cdata" do
+    cdata =
+      ~s(<html><head><title>XMLStreamWriter</title></head>) <>
+        ~s(<body><a href="https://www.w3.org/XML/"><!--comment &-->XML</a>) <>
+        ~s(</body></html>)
+
+    {:ok, s1, state} = XMLStreamWriter.new_document()
+    {:ok, s2, state} = XMLStreamWriter.start_cdata(state)
+    {:ok, s3, state} = XMLStreamWriter.no_markup_characters(state, cdata)
+    {:ok, s4, _state} = XMLStreamWriter.end_cdata(state)
+
+    expected = "<![CDATA[" <> cdata <> "]]>"
+    assert :erlang.iolist_to_binary([s1, s2, s3, s4]) == expected
+  end
+
+  test "cdata fail when characters are escaped" do
+    cdata =
+      ~s(<html><head><title>XMLStreamWriter</title></head>) <>
+        ~s(<body><a href="https://www.w3.org/XML/"><!--comment &-->XML</a>) <>
+        ~s(</body></html>)
+
+    {:ok, s1, state} = XMLStreamWriter.new_document()
+    {:ok, s2, state} = XMLStreamWriter.start_cdata(state)
+    {:ok, s3, state} = XMLStreamWriter.characters(state, cdata)
+    {:ok, s4, _state} = XMLStreamWriter.end_cdata(state)
+
+    expected = "<![CDATA[" <> cdata <> "]]>"
+    refute :erlang.iolist_to_binary([s1, s2, s3, s4]) == expected
+  end
+
+  test "xml with nested tags, attributes, comments and cdata" do
     {:ok, s1, state} = XMLStreamWriter.new_document()
 
-    {:ok, s2, state} = XMLStreamWriter.start_comment(state)
-    {:ok, s3, state} = XMLStreamWriter.characters(state, "comment ")
-    {:ok, s4, state} = XMLStreamWriter.end_comment(state)
+    {:ok, s2, state} = XMLStreamWriter.start_cdata(state)
+
+    {:ok, s3, state} =
+      XMLStreamWriter.no_markup_characters(state, ~s(<hello ' "> &world </<>hello>))
+
+    {:ok, s4, state} = XMLStreamWriter.end_cdata(state)
 
     {:ok, s5, state} = XMLStreamWriter.start_element(state, "html", [])
 
@@ -199,7 +242,7 @@ defmodule XMLStreamWriterTest do
     {:ok, s12, state} = XMLStreamWriter.start_element(state, "a", href: "https://www.w3.org/XML/")
 
     {:ok, s13, state} = XMLStreamWriter.start_comment(state)
-    {:ok, s14, state} = XMLStreamWriter.characters(state, "comment ")
+    {:ok, s14, state} = XMLStreamWriter.no_markup_characters(state, ~s(comment &<>'"))
     {:ok, s15, state} = XMLStreamWriter.end_comment(state)
 
     {:ok, s16, state} = XMLStreamWriter.characters(state, "XML")
@@ -209,9 +252,9 @@ defmodule XMLStreamWriterTest do
     {:ok, s19, _state} = XMLStreamWriter.end_element(state)
 
     expected =
-      ~s(<!--comment -->) <>
+      ~s(<![CDATA[<hello ' "> &world </<>hello>]]>) <>
         ~s(<html><head><title>XMLStreamWriter</title></head>) <>
-        ~s(<body><a href="https://www.w3.org/XML/"><!--comment -->XML</a>) <>
+        ~s(<body><a href="https://www.w3.org/XML/"><!--comment &<>'"-->XML</a>) <>
         ~s(</body></html>)
 
     doc = [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18, s19]
