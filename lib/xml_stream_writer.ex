@@ -41,6 +41,15 @@ defmodule XMLStreamWriter do
     {:ok, [?<, local_name, attributes_string, "/>"], state}
   end
 
+  def start_comment(state) do
+    {:ok, ~s(<!--), state}
+  end
+
+  @spec end_comment([String.t()]) :: {:ok, String.t(), [String.t()]}
+  def end_comment(state) do
+    {:ok, ~s(-->), state}
+  end
+
   def characters(state, text) do
     escaped_text =
       if needs_escaping?(text) do

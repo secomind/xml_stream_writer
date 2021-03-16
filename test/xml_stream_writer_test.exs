@@ -16,8 +16,6 @@
 # limitations under the License.
 #
 
-
-
 defmodule XMLStreamWriterTest do
   use ExUnit.Case
   doctest XMLStreamWriter
@@ -168,6 +166,55 @@ defmodule XMLStreamWriterTest do
     expected = ~s(<escape attribute="'&lt;te&amp;st&gt;'">42</escape>)
 
     doc = [s0, s1, s2, s3]
+
+    assert :erlang.iolist_to_binary(doc) == expected
+  end
+
+  test "XML empty comment" do
+    {:ok, s1, state} = XMLStreamWriter.new_document()
+    {:ok, s2, state} = XMLStreamWriter.start_comment(state)
+    {:ok, s3, state} = XMLStreamWriter.characters(state, "")
+    {:ok, s4, _state} = XMLStreamWriter.end_comment(state)
+
+    expected = ~s(<!---->)
+    assert :erlang.iolist_to_binary([s1, s2, s3, s4]) == expected
+  end
+
+  test "xml with nested tags, attributes and comments" do
+    {:ok, s1, state} = XMLStreamWriter.new_document()
+
+    {:ok, s2, state} = XMLStreamWriter.start_comment(state)
+    {:ok, s3, state} = XMLStreamWriter.characters(state, "comment ")
+    {:ok, s4, state} = XMLStreamWriter.end_comment(state)
+
+    {:ok, s5, state} = XMLStreamWriter.start_element(state, "html", [])
+
+    {:ok, s6, state} = XMLStreamWriter.start_element(state, "head", [])
+    {:ok, s7, state} = XMLStreamWriter.start_element(state, "title", [])
+    {:ok, s8, state} = XMLStreamWriter.characters(state, "XMLStreamWriter")
+    {:ok, s9, state} = XMLStreamWriter.end_element(state)
+    {:ok, s10, state} = XMLStreamWriter.end_element(state)
+
+    {:ok, s11, state} = XMLStreamWriter.start_element(state, "body", [])
+    {:ok, s12, state} = XMLStreamWriter.start_element(state, "a", href: "https://www.w3.org/XML/")
+
+    {:ok, s13, state} = XMLStreamWriter.start_comment(state)
+    {:ok, s14, state} = XMLStreamWriter.characters(state, "comment ")
+    {:ok, s15, state} = XMLStreamWriter.end_comment(state)
+
+    {:ok, s16, state} = XMLStreamWriter.characters(state, "XML")
+    {:ok, s17, state} = XMLStreamWriter.end_element(state)
+    {:ok, s18, state} = XMLStreamWriter.end_element(state)
+
+    {:ok, s19, _state} = XMLStreamWriter.end_element(state)
+
+    expected =
+      ~s(<!--comment -->) <>
+        ~s(<html><head><title>XMLStreamWriter</title></head>) <>
+        ~s(<body><a href="https://www.w3.org/XML/"><!--comment -->XML</a>) <>
+        ~s(</body></html>)
+
+    doc = [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18, s19]
 
     assert :erlang.iolist_to_binary(doc) == expected
   end
