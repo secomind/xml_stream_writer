@@ -41,6 +41,24 @@ defmodule XMLStreamWriter do
     {:ok, [?<, local_name, attributes_string, "/>"], state}
   end
 
+  def start_comment(state) do
+    {:ok, ~s(<!--), state}
+  end
+
+  @spec end_comment([String.t()]) :: {:ok, String.t(), [String.t()]}
+  def end_comment(state) do
+    {:ok, ~s(-->), state}
+  end
+
+  def start_cdata(state) do
+    {:ok, "<![CDATA[", state}
+  end
+
+  @spec end_cdata([String.t()]) :: {:ok, String.t(), [String.t()]}
+  def end_cdata(state) do
+    {:ok, "]]>", state}
+  end
+
   def characters(state, text) do
     escaped_text =
       if needs_escaping?(text) do
@@ -50,6 +68,10 @@ defmodule XMLStreamWriter do
       end
 
     {:ok, escaped_text, state}
+  end
+
+  def no_markup_characters(state, text) do
+    {:ok, text, state}
   end
 
   defp needs_escaping?(text),
