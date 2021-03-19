@@ -17,30 +17,40 @@
 #
 
 defmodule XMLStreamWriter do
+  @opaque state() :: [String.t()]
+
+  @spec new_document :: {:ok, iodata(), state()}
   def new_document() do
     {:ok, "", []}
   end
 
+  @spec start_document(state()) :: {:ok, iodata(), state()}
   def start_document(state) do
     {:ok, ~s(<?xml version="1.0" encoding="UTF-8"?>), state}
   end
 
+  @spec start_element(state(), String.t(), keyword()) ::
+          {:ok, iodata(), state()}
   def start_element(state, local_name, attributes) do
     attributes_string = format_attributes(attributes)
 
     {:ok, [?<, local_name, attributes_string, ?>], [local_name | state]}
   end
 
+  @spec end_element(state()) :: {:ok, iodata(), state()}
   def end_element([local_name | state]) do
     {:ok, ["</", local_name, ?>], state}
   end
 
+  @spec empty_element(state(), String.t(), keyword()) ::
+          {:ok, iodata(), state()}
   def empty_element(state, local_name, attributes) do
     attributes_string = format_attributes(attributes)
 
     {:ok, [?<, local_name, attributes_string, "/>"], state}
   end
 
+  @spec characters(state(), String.t()) :: {:ok, iodata, state()}
   def characters(state, text) do
     escaped_text =
       if needs_escaping?(text) do
@@ -52,9 +62,11 @@ defmodule XMLStreamWriter do
     {:ok, escaped_text, state}
   end
 
+  @spec needs_escaping?(String.t()) :: boolean()
   defp needs_escaping?(text),
     do: String.match?(text, ~r/[<>&]/)
 
+  @spec escape(String.t(), String.t() | nil) :: String.t()
   defp escape(text),
     do: escape(text, "")
 
@@ -73,6 +85,7 @@ defmodule XMLStreamWriter do
   defp escape(<<c, rest::binary>>, acc),
     do: escape(rest, <<acc::binary, c>>)
 
+  @spec format_attributes(keyword()) :: iolist()
   defp format_attributes(attributes) do
     Enum.map(attributes, fn {attribute_name, attribute_value} ->
       case quote_style(attribute_value) do
@@ -94,6 +107,8 @@ defmodule XMLStreamWriter do
     end)
   end
 
+  @spec quote_style(String.t()) ::
+          :escape_and_apos | :escape_and_quot | :escape_everything | :use_apos | :use_quot
   defp quote_style(text) do
     if String.match?(text, ~r/[<>&'"]/) do
       has_quot = String.contains?(text, ~s("))
@@ -112,6 +127,7 @@ defmodule XMLStreamWriter do
     end
   end
 
+  @spec escape_everything(String.t()) :: String.t()
   defp escape_everything(text),
     do: escape_everything(text, "")
 

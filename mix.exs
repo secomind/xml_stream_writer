@@ -15,19 +15,30 @@ defmodule XMLStreamWriter.MixProject do
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test
-      ]
+      ],
+
+      # Dyalizer cache
+      dialyzer_cache_directory: dialyzer_cache_directory(Mix.env())
     ]
   end
 
   def application do
-    [
-    ]
+    []
+  end
+
+  defp dialyzer_cache_directory(:ci) do
+    "dialyzer_cache"
+  end
+
+  defp dialyzer_cache_directory(_) do
+    nil
   end
 
   defp deps do
     [
       {:excoveralls, "~> 0.11", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+      {:dialyzex, github: "Comcast/dialyzex", only: [:dev, :ci]}
     ]
   end
 
